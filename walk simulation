@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Random Walk Simulation</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .container {
+            text-align: center;
+        }
+        canvas {
+            margin: 20px auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Random Walk Simulation</h1>
+        <form id="simulationForm">
+            <label for="nSteps">Number of Servers (n):</label>
+            <input type="number" id="nSteps" min="1" value="100" required><br><br>
+
+            <label for="nAttackers">Number of Hackers (m):</label>
+            <input type="number" id="nAttackers" min="1" value="50" required><br><br>
+
+            <label for="probability">Penetration Probability (p):</label>
+            <input type="number" id="probability" step="0.01" min="0" max="1" value="0.5" required><br><br>
+
+            <label for="specificStep">Specific Time Step:</label>
+            <input type="number" id="specificStep" min="1" value="50" required><br><br>
+
+            <button type="button" onclick="simulate()">Start Simulation</button>
+        </form>
+    </div>
+
+    <div class="container">
+        <canvas id="randomWalkChart"></canvas>
+        <canvas id="finalDistributionChart"></canvas>
+        <canvas id="intermediateDistributionChart"></canvas>
+        <canvas id="frequencyChart"></canvas>
+    </div>
+
+    <script>
+        function simulate() {
+            // Get user inputs
+            const nSteps = parseInt(document.getElementById('nSteps').value);
+            const nAttackers = parseInt(document.getElementById('nAttackers').value);
+            const probability = parseFloat(document.getElementById('probability').value);
+            const specificStep = parseInt(document.getElementById('specificStep').value);
+
+            if (isNaN(nSteps) || isNaN(nAttackers) || isNaN(probability) || isNaN(specificStep) || 
+                nSteps < 1 || nAttackers < 1 || probability < 0 || probability > 1 || specificStep < 1) {
+                alert('Please enter valid inputs.');
+                return;
+            }
+
+            // Generate random walk data
+            const trajectories = [];
+            for (let i = 0; i < nAttackers; i++) {
+                let position = 0;
+                const attackerTrajectory = [];
+                for (let step = 0; step < nSteps; step++) {
+                    position += Math.random() < probability ? 1 : -1;
+                    attackerTrajectory.push(position);
+                }
+                trajectories.push(attackerTrajectory);
+            }
+
+            // Generate data for the charts
+            drawRandomWalkChart(trajectories, nSteps, nAttackers);
+            drawFinalDistributionChart(trajectories, nSteps);
+            drawIntermediateDistributionChart(trajectories, specificStep);
+            drawFrequencyChart(trajectories, nSteps, nAttackers);
+        }
+
+        function drawRandomWalkChart(trajectories, nSteps, nAttackers) {
+            const ctx = document.getElementById('randomWalkChart').getContext('2d');
+            const datasets = trajectories.map((trajectory, index) => ({
+                label: `Attacker ${index + 1}`,
+                data: trajectory,
+                borderColor: getRandomColor(),
+                borderWidth: 1,
+                fill: false,
+            }));
+
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({ length: nSteps }, (_, i) => i + 1),
+                    datasets: datasets.slice(0, Math.min(nAttackers, 10)), // Limit to 10 attackers
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Random Walk Simulation',
+                        },
+                        legend: {
+                            display: false,
+                        },
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Steps',
+                            },
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Position',
+                            },
+                        },
+                    },
+                },
+            });
+        }
+
+        function drawFinalDistributionChart(trajectories, nSteps) {
+            const ctx = document.getElementById('finalDistributionChart').getContext('2d');
+            const finalPositions = trajectories.map(traj => traj[nSteps - 1]);
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: [...new Set(finalPositions)],
+                    datasets: [{
+                        label: 'Frequency',
+                        data: finalPositions.reduce((acc, pos) => {
+                            acc[pos] = (acc[pos] || 0) + 1;
+                            return acc;
+                        }, {}),
+                        backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1,
+                    }],
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Final Distribution of Positions',
+                        },
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Position',
+                            },
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Frequency',
+                            },
+                            beginAtZero: true,
+                        },
+                    },
+                },
+            });
+        }
+
+        function drawIntermediateDistributionChart(trajectories, specificStep) {
+            const ctx = document.getElementById('intermediateDistributionChart').getContext('2d');
+            const positionsAtStep = trajectories.map(traj => traj[specificStep - 1]);
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: [...new Set(positionsAtStep)],
+                    datasets: [{
+                        label: 'Frequency',
+                        data: positionsAtStep.reduce((acc, pos) => {
+                            acc[pos] = (acc[pos] || 0) + 1;
+                            return acc;
+                        }, {}),
+                        backgroundColor: 'rgba(255, 159, 64, 0.6)',
+                        borderColor: 'rgba(255, 159, 64, 1)',
+                        borderWidth: 1,
+                    }],
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: `Intermediate Distribution at Step ${specificStep}`,
+                        },
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Position',
+                            },
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Frequency',
+                            },
+                            beginAtZero: true,
+                        },
+                    },
+                },
+            });
+        }
+
+        function drawFrequencyChart(trajectories, nSteps, nAttackers) {
+            const ctx = document.getElementById('frequencyChart').getContext('2d');
+            const absFrequencies = Array.from({ length: nSteps }, () => 0);
+            const relFrequencies = Array.from({ length: nSteps }, () => 0);
+
+            for (const trajectory of trajectories) {
+                trajectory.forEach((value, step) => {
+                    absFrequencies[step] += value;
+                });
+            }
+            relFrequencies.forEach((_, step) => {
+                relFrequencies[step] = absFrequencies[step] / nAttackers;
+            });
+
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({ length: nSteps }, (_, i) => i + 1),
+                    datasets: [
+                        {
+                            label: 'Absolute Frequency',
+                            data: absFrequencies,
+                            borderColor: 'blue',
+                            borderWidth: 1,
+                            fill: false,
+                        },
+                        {
+                            label: 'Relative Frequency',
+                            data: relFrequencies,
+                            borderColor: 'red',
+                            borderWidth: 1,
+                            fill: false,
+                        },
+                    ],
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Absolute and Relative Frequencies',
+                        },
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Steps',
+                            },
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Frequency',
+                            },
+                        },
+                    },
+                },
+            });
+        }
+
+        function getRandomColor() {
+            const letters = '0123456789ABCDEF';
+            let color = '#';
+            for (let i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        }
+    </script>
+</body>
+</html>
